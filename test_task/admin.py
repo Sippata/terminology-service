@@ -13,6 +13,9 @@ class HandbookItemInline(admin.TabularInline):
 class HandbookAdmin(admin.ModelAdmin):
     fields = ['name', 'description', 'short_name', 'version', 'create_date']
     inlines = [HandbookItemInline]
+    list_display = ['name', 'short_name', 'version', 'create_date']
+    list_filter = ['name', 'version', 'create_date']
+    search_fields = ['name', 'version', 'name']
 
 
 admin.site.register(HandbookItem)
