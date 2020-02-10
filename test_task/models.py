@@ -6,11 +6,14 @@ class Handbook(models.Model):
     name = models.CharField(max_length=128)
     short_name = models.CharField(max_length=32)
     description = models.CharField(max_length=255)
-    version = models.CharField(max_length=16, unique=True, blank=False)
+    version = models.CharField(max_length=16, blank=False)
     create_date = models.DateTimeField('date created', default=timezone.now)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        unique_together = [['name', 'version']]
 
 
 class HandbookItem(models.Model):

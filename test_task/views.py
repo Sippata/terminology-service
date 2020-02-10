@@ -1,67 +1,66 @@
-from datetime import datetime
+from django.conf import settings
 
 from rest_framework import status
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 
-from .models import Handbook
 from .serializers import HandbookItemSerializer, HandbookSerializer
-from .services import get_actual_handbook, paginate
+from .services import get_last_version_handbooks, get_handbooks, get_handbook, get_handbook_items
 
 
-@api_view(['GET'])
-def handbook_list(request):
+class HandbookListView(APIView, PageNumberPagination):
     """
-    Получение списка справочников
+    Получение списка всех справочников
     """
-    # TODO: Нужно ли выделять случай, когда в базе нет справочников?
-    # TODO: Включать справочники, которые "находятся в будущем"?
-    handbooks = Handbook.objects.all().order_by('id')
-    page_res = paginate(handbooks, request)
-    serializer = HandbookSerializer(page_res, many=True)
-    return Response(serializer.data)
+    page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE')
+
+    def get(self, request):
+        handbooks = get_handbooks().order_by('name')
+        page = self.paginate_queryset(handbooks, request)
+        serializer = HandbookSerializer(page, many=True)
+        return Response(serializer.data)
 
 
-@api_view(['GET'])
-def actual_handbook(request, year, month, day):
+class ActualHandbookListView(APIView, PageNumberPagination):
     """
-    Получение списка справочников, актуальных на указанную дату
+    Получение списка справочников, актуальных на указанную дату.
     """
-    # TODO: Валидировать дату?
-    handbook = get_actual_handbook(datetime(year, month, day))
-    if handbook is None:
-        return Response({'error': 'Нет актуального справочника для указанной даты.'},
-                        status=status.HTTP_400_BAD_REQUEST)
-    serializer = HandbookSerializer(handbook)
-    return Response(serializer.data)
+    page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE')
+
+    def get(self, request, year, month, day):
+        try:
+            handbooks = get_last_version_handbooks(year, month, day)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        page = self.paginate_queryset(handbooks, request)
+        serializer = HandbookSerializer(page, many=True)
+        return Response(serializer.data)
 
 
-@api_view(['GET'])
-def current_version_handbook_items(request):
-    """
-    Получение элементов справочника текущей версии
-    """
-    handbook = get_actual_handbook()
-    if handbook is None:
-        return Response({'error': 'Нет справочников текущей версии'}, status=status.HTTP_404_NOT_FOUND)
+class HandbookItemListView(APIView, PageNumberPagination):
+    page_size = settings.REST_FRAMEWORK.get('PAGE_SIZE')
 
-    items = handbook.handbookitem_set.all().order_by('id')
-    page_res = paginate(items, request)
-    serializer = HandbookItemSerializer(page_res, many=True)
-    return Response(serializer.data)
+    def get(self, request, handbook_name):
+        """
+        Получение списка элементов справочника указанной версии или текущей версии, если не указано явно.
+        """
+        version = request.query_params.get('version', None)
+        handbook = get_handbook(handbook_name, version)
+        page = self.paginate_queryset(handbook.handbookitem_set.order_by('pk'), request)
+        serializer = HandbookItemSerializer(page, many=True)
+        return Response(serializer.data)
 
+    def post(self, request, handbook_name):
+        """
+        Валидация элемента справочника указанной версии или текущей версии, если не указано явно.
+        """
+        version = request.query_params.get('version', None)
+        handbook_items = get_handbook_items(handbook_name, version, request.data)
+        if handbook_items.exists():
+            page = self.paginate_queryset(handbook_items.order_by('pk'), request)
+            serializer = HandbookItemSerializer(page, many=True)
+            return Response(serializer.data)
+        else:
+            return Response({'error': 'request data not valid'}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def specified_version_handbook_items(request, version):
-    """
-    Получение элементов спрвочника указанной версии
-    """
-    try:
-        handbook = Handbook.objects.get(version=version)
-    except Handbook.DoesNotExist:
-        return Response({'error': 'Нет справочника с указанной версией'}, status=status.HTTP_400_BAD_REQUEST)
-
-    items = handbook.handbookitem_set.all().order_by('id')
-    page_res = paginate(items, request)
-    serializer = HandbookItemSerializer(page_res, many=True)
-    return Response(serializer.data)

@@ -1,13 +1,11 @@
 from django.urls import path
 
-from .views import handbook_list, actual_handbook, current_version_handbook_items, \
-    specified_version_handbook_items
+from test_task import views
 
 
 app_name = 'test_task'
 urlpatterns = [
-    path('handbooks/', handbook_list, name='handbooks'),
-    path('handbook/<int:year>/<int:month>/<int:day>/', actual_handbook, name='actual_handbook'),
-    path('handbook/items', current_version_handbook_items, name='current_handbook_items'),
-    path('handbook/<str:version>/items', specified_version_handbook_items, name='handbook_items'),
+    path('handbooks/', views.HandbookListView.as_view(), name='handbooks'),
+    path('handbooks/<int:year>/<int:month>/<int:day>/', views.ActualHandbookListView.as_view(), name='actual_handbooks'),
+    path('<str:handbook_name>/items/', views.HandbookItemListView.as_view(), name='handbook_items'),
 ]
