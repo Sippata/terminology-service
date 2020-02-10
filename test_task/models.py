@@ -23,3 +23,6 @@ class HandbookItem(models.Model):
 
     def __str__(self):
         return f'{self.handbook}-{self.code}'
+
+    class Admin:
+        list_filter = ('handbook__name',)

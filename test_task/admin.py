@@ -18,4 +18,13 @@ class HandbookAdmin(admin.ModelAdmin):
     search_fields = ['name', 'version', 'name']
 
 
-admin.site.register(HandbookItem)
+@admin.register(HandbookItem)
+class HandbookItemAdmin(admin.ModelAdmin):
+
+    def handbook_name(self, obj):
+        return obj.handbook.name
+
+    fields = ['code', 'content']
+    list_display = ['code', 'handbook_name', 'content']
+    list_filter = ['code', 'handbook__name']
+    search_fields = ['code', 'content', 'handbook__name']
