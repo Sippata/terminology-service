@@ -4,6 +4,8 @@ from .models import Handbook, HandbookItem
 
 
 class HandbookSerializer(serializers.ModelSerializer):
+    create_date = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
     class Meta:
         model = Handbook
         fields = ['name', 'short_name', 'description', 'version', 'create_date']
